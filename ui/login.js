@@ -56,16 +56,17 @@ function beginLogin( openSocket, connection ) {
 					connection.request( "d3x0r.org", "tron-lightspeed" ).then( (token)=>{
 						;
 						console.log( "module request:", token );
-					l.login = token; // this is 'connection' also.
-					connection.loginForm.hide();
-						socket.close( 1000, "Thank You.");
+						l.login = token; // this is 'connection' also.
+						connection.loginForm.hide();
+						socket.close( 1000, "Thank You."); // close the login socket.
 						if( token.svc ) {
 							TronProtocol.connect( token.svc.key );
-						}else
+						}else {
 							console.log( "Service wasn't given to us?")
 							retry();
+						}
 							// failed to get service, try again.
-						} );
+					} );
 				}
 				retry();
 			}

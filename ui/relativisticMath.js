@@ -1,6 +1,11 @@
 import {Vector} from "./relativistic.util.js"
 import {params} from "./relativistic.util.js"
 const C = params.C;
+const CC = C*C;
+export function gammaFromFL(V) {
+	return Math.sqrt( CC/(V*V+CC))
+}
+
 
 export function RealTime( T_o, V, P, V_o, P_o ) {
 	const tmp = P.sub(P_o.add(V_o.times(T_o)));

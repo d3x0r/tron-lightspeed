@@ -1,6 +1,8 @@
 
+import {C} from "./constants.js"
+
 export const params = {
-	C: 1,
+	C: C,
 	lengthContract : true,
 	lGam : 1.0,
 } 

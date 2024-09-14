@@ -6,13 +6,16 @@ const thisPath = pathParts.slice( 1, pathParts.length-(1+((process.platform==="w
 console.log( pathParts, thisPath );
 
 // not sure how this hooks together yet
-import {enableLogin} from "./login.mjs";
+import {getUser, enableLogin} from "./login.mjs";
+
+const clientBoards = new Map();
 
 class TronClient extends WS {
 	delta = 0;
 	tsDelta = 0;
 	timeDelta = 0;
-
+	user = null;
+	players = []; // all other players related to this player...
 	constructor( ws ) {
 		super( ws );
 	}
@@ -37,6 +40,23 @@ class TronProtocol extends Protocol {
 		this.on( "accelerate", this.accelerate.bind( this ) )
 		this.on( "cruise", this.cruise.bind( this ) )
 		this.on( "decelerate", this.decelerate.bind( this ) )
+		this.on( "close", (code, reason)=>{
+			
+		});
+
+		this.on( "join", (client,msg)=>{
+			clientBoards.set( msg.join.uid, client )
+			client.players.push( client );
+			// echo join(mostly)
+			client.send( {op:"join", join:msg.join} );
+		} );
+		this.on( "key", (client,msg)=>{
+			client.user = getUser( msg.key );
+			console.log( "Is client client?", client );
+			client.send( {op:"user", user:client.user } );
+			// allow this user to play... they asked nicely afterall...
+			//client.key = msg.key
+		} );
 
 		const app = this.server.app
 		enableLogin( this.server, app );
@@ -69,19 +89,27 @@ class TronProtocol extends Protocol {
 
 	accelerate( client, msg ) {
 		msg.timeStamp += client.timeDelta;
-		this.player.forEach( p=>p.send( msg ) );
+		msg.user = client.user;
+		const msg_ = JSOX.stringify( msg );
+		this.player.forEach( p=>p.send( msg_ ) );
 	}
 	decelerate( client, msg ) {
 		msg.timeStamp += client.timeDelta;
-		this.player.forEach( p=>p.send( msg ) );
+		msg.user = client.user;
+		const msg_ = JSOX.stringify( msg );
+		this.player.forEach( p=>p.send( msg_ ) );
 	}
 	turn( client, msg ) {
 		msg.timeStamp += client.timeDelta;
-		this.player.forEach( p=>p.send( msg ) );
+		msg.user = client.user;
+		const msg_ = JSOX.stringify( msg );
+		this.player.forEach( p=>p.send( msg_ ) );
 	}
 	cruise( client, msg ) {
 		msg.timeStamp += client.timeDelta;
-		this.player.forEach( p=>p.send( msg ) );
+		msg.user = client.user;
+		const msg_ = JSOX.stringify( msg );
+		this.player.forEach( p=>p.send( msg_ ) );
 	}
 
 

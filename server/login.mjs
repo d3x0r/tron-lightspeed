@@ -41,6 +41,9 @@ function initServer( loginServer ) {
 
 }
 
+export function getUser( id ) {
+	return connections.get( id[0] );
+}
 
 function expect( msg ) {
 	console.log( "Told to expect a user: does this result with my own unique ID?", msg );

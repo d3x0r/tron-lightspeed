@@ -48,6 +48,7 @@ export class TronProtocol extends Protocol {
 	tock( message ) {
 		console.log( "Tock", message );
 		this.gTimeDelta = message.timeDelta;
+		this.on( "firstJoin", true );
 		//this.send( JSOX.stringify( {op:"tock", now:Date.now(), pnow:performance.now(), prnow:message.now, prpnow:message.pnow }) )
 		return true
 	}
