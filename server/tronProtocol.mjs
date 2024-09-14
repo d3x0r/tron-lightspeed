@@ -1,10 +1,12 @@
+export const config = (await import( "file://"+process.cwd()+  "/config.jsox" )).default;
+
 import {WS, Protocol} from "sack.vfs/server-protocol"
 const pathParts = new URL( import.meta.url ).pathname.split('/');
 const thisPath = pathParts.slice( 1, pathParts.length-(1+((process.platform==="win32")?1:0) ) ).join('/');
 console.log( pathParts, thisPath );
 
 // not sure how this hooks together yet
-import "login.mjs"
+import {enableLogin} from "./login.mjs";
 
 class TronClient extends WS {
 	delta = 0;
@@ -26,6 +28,7 @@ class TronProtocol extends Protocol {
 	players = [];
 	constructor() {
 		super( {port:8180, npmPath:thisPath, resourcePath:thisPath+"/ui", WS:TronClient } );
+
 		this.on( "accept", this.accept.bind( this ) )
 		this.on( "connect", this.connect.bind( this ) )
 		this.on( "tick", this.tick.bind( this ) )
@@ -36,18 +39,7 @@ class TronProtocol extends Protocol {
 		this.on( "decelerate", this.decelerate.bind( this ) )
 
 		const app = this.server.app
-
-		// handle /internal/loginServer request
-		app.get( /\/internal\//, (req,res)=>{
-			const split = req.url.split( "/" );
-			console.log( "Resolve internal request:", split );
-			switch( split[2] ) {
-			case "loginServer":
-				res.writeHead( 200, {'Content-Type': "text/javascript" } );
-				res.end( "export default "+JSON.stringify( {loginRemote:config.loginRemote, loginRemotePort:config.loginRemotePort} ) );
-				return true;
-			}
-		} );
+		enableLogin( this.server, app );
 
 	}
 

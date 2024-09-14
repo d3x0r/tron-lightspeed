@@ -1,4 +1,4 @@
-
+import {sack} from "sack.vfs" // Id()
 export const config = (await import( "file://"+process.cwd()+  "/config.jsox" )).default;
 //------------------------
 // Login service hook.
@@ -12,7 +12,8 @@ UserDbRemote.import = Import;
 // request for user to get unique ID from service.
 UserDbRemote.on( "expect", expect );
 
-  
+const connections = new Map();
+
 function Import(a) { return import(a)} 
 
 console.log( "login server await..." );
@@ -23,7 +24,7 @@ let  loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
 initServer(loginServer );
 console.log( "init server again?" );
 function initServer( loginServer ) {
-console.log( "So login server close I should be able to on?", loginServer );
+	//console.log( "So login server close I should be able to on?", loginServer );
 	//console.log( "loginserver:", loginServer, loginServer&&loginServer.ws&&loginServer.ws.connection );
 	config.loginRemote = loginServer.ws.connection.remoteAddress;
 	config.loginRemotePort = loginServer.ws.connection.remotePort;
@@ -47,7 +48,24 @@ function expect( msg ) {
 	const id = sack.Id();
 	const user = msg;
 	connections.set( id, user );
+
+	
 	// lookup my own user ? Prepare with right object?
 	// connections.set( msg.something, msg ) ;	
 	return id;
+}
+
+export function enableLogin( server, app ) {
+	server.addHandler( socketHandleRequest );
+	// handle /internal/loginServer request
+	app.get( /\/internal\//, (req,res)=>{
+		const split = req.url.split( "/" );
+		console.log( "Resolve internal request:", split );
+		switch( split[2] ) {
+		case "loginServer":
+			res.writeHead( 200, {'Content-Type': "text/javascript" } );
+			res.end( "export default "+JSON.stringify( {loginRemote:config.loginRemote, loginRemotePort:config.loginRemotePort} ) );
+			return true;
+		}
+	} );
 }

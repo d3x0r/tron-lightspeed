@@ -1,5 +1,5 @@
 import {TronProtocol} from "./protocol.js"
-
+import {popups} from "/node_modules/@d3x0r/popups/popups.mjs"
 const l = {
 	login : null,
 };
@@ -31,10 +31,9 @@ const wsc = await firstConnect();
 
 
 function beginLogin( openSocket, connection ) {
-
-	let login = openSocket().then( (socket)=>{
-		console.log( "Open socket finally happened?", socket );
-			//login = socket;
+	// uses socket-service websocket connection to login to the server.
+	return openSocket().then( (socket)=>{
+		//console.log( "Open socket finally happened?", socket );
 		socket.setUiLoader();
 		connection.on( "close", (code, reason)=>{
 			if( !l.login ) {
@@ -45,22 +44,41 @@ function beginLogin( openSocket, connection ) {
 			}
 		} ) 
 		connection.loginForm = popups.makeLoginForm( (token)=>{
-				console.log( "login completed...", token );
-        		connection.request( "d3x0r.org", "tron-lightspeed" ).then( (token)=>{
-					;
-					console.log( "flatland request:", token );
-				   l.login = token; // this is 'connection' also.
-				   connection.loginForm.hide();
-					socket.close( 1000, "Thank You.");
-					TronProtocol.connect( token.svc.key );
-				} );
+			if( !token ) {
+				console.log( "login failed, or service lookup failed, or request to service instance was disconnected...")
+				return;
 			}
+			let tries = 0;
+				function retry() {
+					tries++;
+					if( tries > 3 ){ console.log( "stop trying?" );return;}
+					console.log( "login completed...", token.name, token.svc&&token.svc.key );
+					connection.request( "d3x0r.org", "tron-lightspeed" ).then( (token)=>{
+						;
+						console.log( "module request:", token );
+					l.login = token; // this is 'connection' also.
+					connection.loginForm.hide();
+						socket.close( 1000, "Thank You.");
+						if( token.svc ) {
+							TronProtocol.connect( token.svc.key );
+						}else
+							console.log( "Service wasn't given to us?")
+							retry();
+							// failed to get service, try again.
+						} );
+				}
+				retry();
+			}
+			
 			, {wsLoginClient:connection ,
 				useForm: ("http://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) + "/login/loginForm.html",
-				parent: app
+				parent: document.getElementById( "game" )
+				
 			} );
+	
 
 		connection.loginForm.show();
+		connection.loginForm.center();
 		return socket;
 	} );
 

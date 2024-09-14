@@ -10,9 +10,12 @@ export class TronProtocol extends Protocol {
 	key = null;
 
 	constructor() {
+		// otherwise this protocols supports accelerate, decelerate, cruise, turn (used by application importing this.)
+		// this application will use .emit() to send messages to the server.
+		// tick, tock (initial time sync)
+		// and functional 'open' and 'close' events
 		super( /*"tron"*/ );
 		this.on( "open", this.#open.bind( this ) )
-
 		this.on( "tick", this.tick.bind( this ) );
 		this.on( "tock", this.tock.bind( this ) );
 	}

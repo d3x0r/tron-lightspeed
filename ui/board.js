@@ -3,16 +3,64 @@ const myself = new URL( import.meta.url );
 console.log( myself.pathname );
 import  {SaltyRNG} from "/node_modules/@d3x0r/srg2/salty_random_generator2.mjs";
 import protocol from "./protocol.js";
+import Token from "./token.js"
 
-import from "./login.js"
+const C = 128;
+const CC = C*C;
+const boardSize = 960;
+const colors = [
+	
+]
+const directions = {
+	north:0,
+	west:1,
+	south:2,
+	east:4,
+};
+const deltas = {
+	north:{x:0,y:-1},
+	west:{x:-1,y:0},
+	south:{x:0,y:1},
+	east:{x:1,y:0},
+};
+const playerTokens = {};
+
+
+Object.freeze( directions );
+Object.seal( directions );
+Object.freeze( deltas );
+Object.seal( deltas );
+for( let d in deltas ) {
+	Object.freeze( d );
+	Object.seal( d );
+}
+
+import  "./login.js"
 
 const uid = new SaltyRNG.Id();
 const playerMap = new Map();
-protocol.send( {op:"join", uid:uid } );
+
+protocol.on( "open", (ws)=>{
+	console.log( "New connection to server... (send join game board)")
+	protocol.emit( "join", performance.now(), { uid:uid } );
+})
+
+protocol.on( "boards", (ws, data)=>{
+	// probably have to pick another board one day... or pick A board.
+	console.log( "Got boards:", data );
+	// protocol.emit( "join", performance.now(), { boardid: board.uid, uid:uid } );
+	//
+} );
 
 protocol.on( "join", (ws, data) => {
-	const player = board.newPlayer( data.uid, data.x, data.y );
+	const player = board.newPlayer( data.uid );
+	console.log( "Player joined (self?):", data.uid, player.x, player.y );
 	playerMap.set( data.uid, player );
+
+	const board = new Board(ws, data);
+	window.game.appendChild( board.canvas );
+	board.draw( performance.now() );
+
 } );
 
 protocol.on( "part", (ws, data) => {
@@ -78,20 +126,6 @@ function move( X, V, A, t ) {
 
 */
 
-const C = 128;
-const boardSize = 960;
-const colors = [
-	
-]
-const directions = {
-	north:0,
-	west:1,
-	south:2,
-	east:4,
-};
-
-Object.freeze( directions );
-Object.seal( directions );
 
 function gamma(V) {
 	return Math.sqrt( C*C-Math.sqrt(V.x*V.x+V.y*V.y))/C;
@@ -99,7 +133,7 @@ function gamma(V) {
 
 function gammaF(V) {
 	//\frac{\sqrt{CC-\left(\frac{xC}{\sqrt{CC+xx}}\right)^{2}}}{C}
-	return C/Math.sqrt(CC+Math.sqrt(V.x*V.x+V.y*V.y));
+	return C/Math.sqrt(C*C+Math.sqrt(V.x*V.x+V.y*V.y));
 	return Math.sqrt( C*C-Math.sqrt(V.x*V.x+V.y*V.y))/C;
 }
 
@@ -117,6 +151,8 @@ class Ref {
 class SpanList {
 	first = null;
 	last = null;
+	#current = null;
+	#step = null;
 	add( span ) {
 		if( !this.first ) {
 			this.first = span;
@@ -133,13 +169,42 @@ class SpanList {
 			this.last = span;
 		}
 	}
+	reset( firstElseLast) {
+		if( firstElseLast ) {
+			this.#current = this.first;
+			this.#step = next => next.next;
+		} else {
+			this.#current = this.last;
+			this.#step = next => next.field == "next"?next.object:null;
+		}
+		return this.#current;
+	}
+	next() {
+		this.#current = this.#step( this.#current );
+		return this.#current;
+	}
 }
 
 class Span extends Ref {
 	start = 0;
 	end = 0;
 	X = { s:{x:0,y:0},e:{x:0,y:0} };
+	V = 0;
+	A = 0;
+	direction = directions.north;
 	inList = null;
+
+	get posStart() {
+		return {x:this.X.s.x, y:this.X.s.y};
+	}
+	get posEnd() {
+		const del = (this.end-this.start);
+		this.X.e = {x:this.X.s.x+del*deltas[this.direction].x*(this.V + this.A/2)
+			, y:this.X.s.y*del*deltas[this.direction].x*(this.V + (this.A/2))
+			};
+
+		return this.X.e;
+	}
 
 	times(from) {
 
@@ -148,10 +213,13 @@ class Span extends Ref {
 
 	until( time ) {
 		const del = (time-this.start)/(this.end-this.start);
-		if( del > 1 || del < 0 ) {
+		if( del > 1 ) {
 			console.log( "time isn't actually in the span" );
+			return { x: this.X.s.x + (this.X.e.x-this.X.s.x), y: this.X.s.y + (this.X.e.y-this.X.s.y) };
+		} else if( del < 0 ) {
+			return { x: this.X.s.x, y: this.X.s.y };
 		}
-		return { x: X.s.x + (X.e.x-this.X.s.x)*del, y: X.s.y + (X.e.y-this.X.s.y)*del };
+		return { x: this.X.s.x + (this.X.e.x-this.X.s.x)*del, y: this.X.s.y + (this.X.e.y-this.X.s.y)*del };
 		// can compute delta time by position - depends on which way the time is... 
 		// this is only an approximation.
 	}
@@ -175,70 +243,51 @@ class Span extends Ref {
 		this.object = into;
 		into = this;
 	}
-}
 
-class Token {
-	x = 0;
-	y = 0;
-	spd = 0;
-	gamma = 0;
-	tick = 0; // real time
-	clock = 0; // feels-like time
-	tail = new SpanList();
-	X = {x:0,y:0}
-	V = {x:0,y:0}
-	A = {x:0,y:0}
-	// directions:
-	direction = directions.north;
-	board = null;
-	constructor( board, x, y ) {
-		this.x = x;
-		this.y = y;
-		this.board = board;
-	}
-	accelerate( V, A, t )
-	{
-		// in feels-like speed
-		this.V.x = V.x + A.x*t/2;
-		this.V.y = V.y + A.y*t/2;
-	}
+	// returns the status if the next span might be visible
+	// else returns next span won't be visible
+	
+	drawTo( ctx, at, from ) {
+		const distx = (this.X.s.x - from.x);
+		const disty = (this.X.s.y - from.y);
+		const distxe = (this.X.e.x - from.x);
+		const distye = (this.X.e.y - from.y);
+		// usually this additional length will put the time after 'at'
+		// there may be a time in the middle of the wall that is before either end, and is close enough to now to be seen.
 
-	moveX( X, V, A, t ) {
-		this.X.x = X.x + V.x*t + A.x*t*t/2;
-		this.X.y = X.y + V.y*t + A.y*t*t/2;
-		this.tick += t;
-		this.clock += ( this.gamma = gammaF(this.V) )*t;
-	}
+		const dist = Math.sqrt( (distx*distx) + (disty*disty) )/C;
+		const diste = Math.sqrt( (distxe*distxe) + (distye*distye) )/C;
+		if( (this.start +dist) > at ) {
+			if( (this.start +diste) > at ) {
+				return false; // haven't started yet.
+			} else {
+				// starts being visible from the end, until the start which is further away
+				// diste < at
+				const del = ( at - diste )/ (dist - diste) // this is the time between the two points.
+				ctx.moveTo( this.X.e.x, this.X.e.y );
+				ctx.lineTo( this.X.e.x - (this.X.s.x-this.X.e.x)*del, this.X.e.y - (this.X.s.y-this.X.e.y)*del );
+				//const this.start + (dist+diste)/2- at
+				//const pastStart = (this.start+dist ) - at;
+				return false;
+			}
+		} else {
+			// start happened before now
+			if( (this.start +diste) > at ) {
+				// end happened after now
+				return false;
+			} else {
+				ctx.lineTo( this.X.e.x, this.X.e.y );
+				return true;
+			}
+		}
+		if( this.start > at ) return;
+		if( this.end < at ) {
 
-	move( delta ){
-		const s = new Span( this.tail, {X:this.X,V:this.V,A:this.A, start:this.tick, end:this.tick+delta} );
-		s.until( delta );
+		}
 
-		this.moveX( this.X, this.V, this.A, delta );
-
-		//board.move( this.x, this.y, this.direction, this.spd, delta );
-	}
-	turnTo( d ) {
-		this.direction = d;
-	}
-	accel( n ) {
-		
 	}
 }
 
-class Wall {
-	x = 0;
-	y = 0;
-	color = 0;	
-	direction = 0;
-	placed = 0; // time when wall was placed
-	constructor( x, y, color, direction ) {
-		this.x = x;
-		this.y = y;
-		this.color = color;
-		this.direction = direction;
-	}
-}
 
 class GameControls {
 	
@@ -246,7 +295,7 @@ class GameControls {
 	}
 
 	static Go( at ) {
-		protocol.emit( "go", start:at );
+		protocol.emit( "go", at, null );
 	}
 }
 
@@ -261,6 +310,24 @@ class Board {
 	// if cell is not empty, then a collision happens.
 	map = new Uint8Array( boardSize*boardSize );
 	time = new Float32Array( boardSize*boardSize );
+	static nextStart = 0;
+	static starts = [
+		{x:150, y: 500}
+		, {x:850, y: 500}
+		, {x:500, y: 150}
+		, {x:500, y: 850}
+		, {x:250, y: 250}
+		, {x:750, y: 750}
+		,{x:250, y: 750}
+		,{x:750, y: 250}
+		,{x:150, y: 850}
+		,{x:850, y: 150}
+		,{x:150, y: 150}
+		,{x:850, y: 850}
+		,{x:250, y:850}
+		,{x:750, y:150}
+	];
+
 	palette = [
 		[0xFF,0x00,0x00,0xFF],
 		[0x00,0xFF,0x00,0xFF],
@@ -281,25 +348,29 @@ class Board {
 	animating = true;
 	//C = 128;
 	time = 0;
-	constructor() {
+	constructor(ws, playerInfo) {
 		this.canvas.width = 1024;
 		this.canvas.height = 1024;
 		this.bitmap = new ImageData( this.canvas.width, this.canvas.height );
 		this.bm = this.bitmap.data;
 		new Controls( this );
-		this.player = this.newPlayer( SaltyRNG.Id(), 500, 50 );
+		this.player = this.newPlayer( SaltyRNG.Id(), playerInfo ); // position assigned 'random'
 	}
 	
-	newPlayer( uid, x, y ) {
-		const token = new Token( this, x, y );
+	newPlayer( uid ) {
+		const sx = Board.starts[Board.nextStart].x;
+		const sy = Board.starts[Board.nextStart].y;
+		Board.nextStart = (Board.nextStart+1)%Board.starts.length;
+
+		const token = new Token( this, sx, sy );
+		token.turnTo( directions.north, 0 );
 		this.tokens.push( token );
+		playerTokens[uid] = token;
 		return token;
 	}
 	
-	removePlayer( x, y ) {
-		const token = new Token( this, x, y );
-		this.tokens.push( token );
-		return token;
+	removePlayer( uid ) {
+		delete playerTokens[uid];
 	}
 	cruise( timestamp ) {
 
@@ -346,10 +417,11 @@ class Board {
 	}
 	
 
-	tick( delta ) {
-		this.time += delta;
-		this.tokens.forEach( token => token.move( delta ) );
-		return this.time;
+	tick( ts ) {
+		const delta = ts - this.time;
+		this.time = ts;
+		this.tokens.forEach( token => token.move( ts, delta ) );
+		return delta;
 	}
 
 
@@ -362,23 +434,59 @@ class Board {
 	}
 
 	thisDraw = this.draw.bind( this );
-	draw(timseStamp) {
+	draw(timestamp) {
+		const ts = timestamp; // this case the timestamp is in microseconds, and we prefer milliseconds.
 
-		console.log( "frame gets:", timseStamp, timseStamp/1000, performance.now() );
-		this.tick( timseStamp/1000  );
+		//console.log( "frame gets:", timestamp, ts, performance.now() );
+		// update everything with 'move' at(until) this timestamp.
+		this.tick( ts );
+
+
 		this.ctx.clearRect( 0, 0, 1024, 1024 );
 		// initialize background
 		this.ctx.stokeStyle = "black";
 		this.ctx.fillRect( 0, 0, 1024, 1024 );
 
+		/*
 		const data = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height)
 		this.bitmap = data;
 		this.bm = data.data;
 		for( let i = 1; i < 500; i++) {
 			this.plot( i, i, i%6 );
 		}
-
 		this.ctx.putImageData( this.bitmap, 0, 0 );
+		*/
+		let end = {x:0,y:0};
+		this.ctx.strokeStyle = "white";
+		for( let token of this.tokens ){
+			// I can always see my own wall anywhere at any time - physics.
+			if( token == this.player ) {
+				let span = token.tail.reset( false )
+				const start = span.X.s;
+				this.ctx.moveTo( start.x, end.y );
+				do {
+					end = span.X.e;
+					this.ctx.moveTo( end.x, end.y );
+				} while ( span = token.tail.next() );
+				continue;
+			}
+		}
+
+
+		for( let token of this.tokens ){
+			// I can always see my own wall anywhere at any time - physics.
+			if( token == this.player ) {
+				continue;
+			}
+
+			let span = token.tail.reset( false );
+			//span.X-
+			do {
+				span.drawTo( this.ctx, ts, end );
+			} while( span = token.tail.next() );
+
+		}
+
 		if( this.animating ) // allow pause(someday)
 			requestAnimationFrame( this.thisDraw );
 	}
@@ -536,6 +644,3 @@ class Controls {
 	}
 }
 
-const board = new Board();
-window.game.appendChild( board.canvas );
-board.draw();

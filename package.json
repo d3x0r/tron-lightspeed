@@ -3,9 +3,19 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "link": "npm link sack.vfs jsox @d3x0r/socket-service @d3x0r/user-database-remote @d3x0r/srg2 @d3x0r/popups"
   },
-  "author": "",
+  
+  "author": "d3x0r",
   "license": "ISC",
-  "description": ""
+  "dependencies": {
+        "@d3x0r/popups": "latest"
+        , "@d3x0r/socket-service":"latest"
+        , "@d3x0r/srg2":"latest"
+        , "@d3x0r/user-database-remote":"latest"
+        , "sack.vfs":"latest"
+        , "jsox":"latest"
+  },
+  "description": "Tron Speed of Light Cycles"
 }
