@@ -2,8 +2,9 @@ export const config = (await import( "file://"+process.cwd()+  "/config.jsox" ))
 
 import {WS, Protocol} from "sack.vfs/server-protocol"
 const pathParts = new URL( import.meta.url ).pathname.split('/');
-const thisPath = pathParts.slice( 1, pathParts.length-(1+((process.platform==="win32")?1:0) ) ).join('/');
-console.log( pathParts, thisPath );
+// win32 starts with //blah and we want to drop the first extra slash
+const thisPath = pathParts.slice( (process.platform==="win32")?1:0, pathParts.length-2 ).join('/');
+//console.log( pathParts, thisPath );
 
 // not sure how this hooks together yet
 import {getUser, enableLogin} from "./login.mjs";

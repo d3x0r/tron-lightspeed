@@ -59,8 +59,9 @@ export function enableLogin( server, app ) {
 	server.addHandler( socketHandleRequest );
 	// handle /internal/loginServer request
 	app.get( /\/internal\//, (req,res)=>{
+		// 0 = '', 1 = 'internal', 2 is variable content
 		const split = req.url.split( "/" );
-		console.log( "Resolve internal request:", split );
+		console.log( "Resolve internal request:", split, config );
 		switch( split[2] ) {
 		case "loginServer":
 			res.writeHead( 200, {'Content-Type': "text/javascript" } );
