@@ -6,7 +6,7 @@ const l = {
 
 //import {connection,Alert,openSocket} from "/login/webSocketClient.js";
 import loginServer from "/internal/loginServer";
-const loginInterface = ( ("https://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089" ) + "/login/webSocketClient.js";
+const loginInterface = ( (location.protocol+"//"+loginServer.loginRemote+":"+loginServer.loginRemotePort) || "https://d3x0r.org:8089" ) + "/login/webSocketClient.js";
 
 let n = 0;
 let loginDone = false;
@@ -72,7 +72,7 @@ function beginLogin( openSocket, connection ) {
 			}
 			
 			, {wsLoginClient:connection ,
-				useForm: ("http://"+loginServer.loginRemote+":"+loginServer.loginRemotePort) + "/login/loginForm.html",
+				useForm: (location.protocol+"//"+loginServer.loginRemote+":"+loginServer.loginRemotePort) + "/login/loginForm.html",
 				parent: document.getElementById( "game" )
 				
 			} );
