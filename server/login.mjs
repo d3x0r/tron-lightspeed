@@ -16,16 +16,13 @@ const connections = new Map();
 
 function Import(a) { return import(a)} 
 
-console.log( "login server await..." );
-
-
-let  loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
-//console.log( "LOGIN?", loginServer );
-initServer(loginServer );
-console.log( "init server again?" );
 function initServer( loginServer ) {
 	//console.log( "So login server close I should be able to on?", loginServer );
 	//console.log( "loginserver:", loginServer, loginServer&&loginServer.ws&&loginServer.ws.connection );
+	if( !loginServer.ws ) {
+		console.log( "It disconnected even as it was created?");
+		return;
+	}
 	config.loginRemote = loginServer.ws.connection.remoteAddress;
 	config.loginRemotePort = loginServer.ws.connection.remotePort;
 	loginServer.on( "close", ()=>{
@@ -35,7 +32,7 @@ function initServer( loginServer ) {
 		setTimeout( async ()=>{
 				console.log( "This should have been after 5 seconds..." );
 				//loginServer = await UserDbRemote.open( { towers: config.loginTowers } );
-				//initServer( loginServer );
+				initServer( loginServer );
 			}, 5000 );
 	} );
 
@@ -71,4 +68,9 @@ export function enableLogin( server, app ) {
 			return true;
 		}
 	} );
+
+	UserDbRemote.open( { port:server.serverOpts.port, towers: config.loginTowers } ).then( (loginServer)=>{
+		initServer(loginServer );
+	});
+	
 }
