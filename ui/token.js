@@ -19,6 +19,8 @@ export class Token {
 	directionAt = 0;
 	board = null;
 	onstop = null;
+	moves = 0;
+	botLeft = false;
 
 	stop() {
 		this.stopped = true;

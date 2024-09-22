@@ -33,6 +33,7 @@ export class Span extends Ref {
 	A = 0;
 	As = 0;
 	Ae = 0;
+	visible = false; // once visible, don't need to calculate distances
 	direction = directions.north;
 	inList = null;
 	

@@ -145,6 +145,7 @@ class Board {
 	// if cell is not empty, then a collision happens.
 	map = new Uint8Array( boardSize*boardSize );
 	time = new Float32Array( boardSize*boardSize );
+	starttime = 0;
 	localtime = 0;
 	realtime = 0;
 	static nextStart = 0;
@@ -165,6 +166,39 @@ class Board {
 		,{x:750, y:150, d:directions.west}
 	];
 
+	static nextBot = 0;
+	static bots = [
+		{x:100, y: 100, d:directions.east}
+		, {x:800, y: 100, d:directions.west}
+		, {x:100, y: 800, d:directions.south}
+		, {x:800, y: 800, d:directions.north}
+		, {x:500, y: 500, d:directions.north}
+	];
+
+
+	botMove( ts ) {
+		if( !this.starttime ) return;
+
+		for( let bot of this.bots ) {
+			const last = bot.tail.last;
+			if( ( last.end - ts ) < 0 ) {
+				let newDirection = 0;
+				if( bot.botLeft ) 
+					last =  (last.direction+1)%4
+				else
+					last =  (last.direction+3)%4
+				const nextMove = new Span( this, {X:last.X.e,Vs:last.Ve,A:0,As:0, direction:last, start:last.end } );
+				if( this.moves++ < 2 ) {
+					nextMove.end = last.end + 1000;
+				} else {
+					nextMove.end = last.end + 2000;
+				}
+				nextMove.update();
+
+			}
+		}
+	}
+
 	palette = [
 		[0xFF,0x00,0x00,0xFF],
 		[0x00,0xFF,0x00,0xFF],
@@ -178,6 +212,11 @@ class Board {
 	start = 0; // time of start, if 0, then game hasn't started.
 	canvas = window.gameCanvas;
 	startButton = new popups.AlertForm( this.canvas, { noClick:true, onClick:()=>{
+		this.starttime = performance.now();
+		for( let bot of this.bots ) {
+			this.bot.tail.last.start = this.starttime;
+			this.bot.tail.last.end = this.startTime + 0.5;
+		}
 		this.startButton.hide();
 
 	}} );
@@ -185,6 +224,7 @@ class Board {
 	bitmap = null;
 	bm = null;
 	tokens = [];
+	bots = [];
 	priorTimestamp = 0;
 	priorTickstamp = 0;
 	animating = true;
@@ -220,6 +260,20 @@ class Board {
 	removePlayer( uid ) {
 		delete playerTokens[uid];
 	}
+
+	newDecoration( ) {
+		const sx = Board.bots[Board.nextBot].x;
+		const sy = Board.bots[Board.nextBot].y;
+		const sd = Board.bots[Board.nextBot].d;
+		Board.nextBot++;
+		const token = new Token( this, {}, sx, sy, sd );
+		token.tail.last.Vs = 0.5;
+		token.tail.last.Ve = 0.5;
+		token.tail.end = this.starttime + 1000;
+
+		this.bots.push( token );
+	}
+
 	cruise( timestamp ) {
 		const delts = timestamp - this.localtime;
 		const delreal = delts/this.frameBaseGamma;
@@ -260,6 +314,7 @@ class Board {
 
 	tick( ts, rts, delts, delreal ) {
 		// update timestamp to now.
+		this.botMove( ts );
 		this.tokens.forEach( token => token.move( ts, rts, delts, delreal  ) );
 		let i,j;
 		for( i = 0; i < this.tokens.length; i++ ) {
@@ -323,10 +378,16 @@ class Board {
 		}
 		this.ctx.putImageData( this.bitmap, 0, 0 );
 		*/
-		for( let token of this.tokens ){
+
+		for( let {bot,botid} of this.bots ){
+			console.log( "draw bot, botid?", bot, botid );
 			// I can always see my own wall anywhere at any time - physics.
-			token.draw( this.ctx );
+			this.ctx.beginPath();
+
+			this.ctx.strokeStyle = Board.palette[botid];
+			bot.draw( this.ctx, this.player.tail.last, timestamp );
 		}
+
 		let end = {x:0,y:0};
 		this.ctx.beginPath();
 
@@ -343,6 +404,9 @@ class Board {
 					this.ctx.lineTo( end.x, end.y );
 				} while ( span = token.tail.next() );
 				break;
+			} else {
+				token.draw( this.ctx, this.player.tail.last, timestamp );
+				
 			}
 		}
 		this.ctx.stroke();

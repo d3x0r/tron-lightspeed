@@ -1,10 +1,11 @@
 {
-  "name": "tron-lightspeed",
+  "name": "@d3x0r/tron-lightspeed",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "link": "npm link sack.vfs jsox @d3x0r/socket-service @d3x0r/user-database-remote @d3x0r/srg2 @d3x0r/popups"
+    "link": "npm link sack.vfs jsox @d3x0r/socket-service @d3x0r/user-database-remote @d3x0r/srg2 @d3x0r/popups",
+    "start": "node --import sack.vfs/import server/tronProtocol.mjs"
   },
   
   "author": "d3x0r",
