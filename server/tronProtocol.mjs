@@ -7,7 +7,7 @@ const thisPath = pathParts.slice( (process.platform==="win32")?1:0, pathParts.le
 //console.log( pathParts, thisPath );
 
 // not sure how this hooks together yet
-import {getUser, enableLogin} from "./login.mjs";
+import {getUser, enableLogin} from "@d3x0r/user-database-remote/enableLogin.mjs";
 
 const clientBoards = new Map();
 
@@ -52,14 +52,15 @@ class TronProtocol extends Protocol {
 			client.send( {op:"join", join:msg.join} );
 		} );
 		this.on( "key", (client,msg)=>{
-			client.user = getUser( msg.key );
-			console.log( "Is client client?", client );
+			client.user = getUser( msg.key.svc.key[0] );
+			console.log( "Is client client?", msg.key, client );
 			client.send( {op:"user", user:client.user } );
 			// allow this user to play... they asked nicely afterall...
 			//client.key = msg.key
 		} );
 
 		const app = this.server.app
+		// optional expect handler, otherwise use getUser on the key....
 		enableLogin( this.server, app );
 
 	}

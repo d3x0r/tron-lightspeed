@@ -5,10 +5,16 @@ import  {SaltyRNG} from "/node_modules/@d3x0r/srg2/salty_random_generator2.mjs";
 import {popups} from "/node_modules/@d3x0r/popups/popups.mjs";
 import {gammaFromFL} from "./relativisticMath.js";
 import protocol from "./protocol.js";
+import {TronProtocol} from "./protocol.js"
 import Token from "./token.js"
 
 import {directions,C,CC,boardSize,deltas,colors} from "./constants.js";
-import  "./login.js"
+
+import {requestService} from "/node_modules/@d3x0r/user-database-remote/requestService.js"
+requestService( "d3x0r.org", "tron-lightspeed", (token)=>{
+	console.log( "Complete login to service", token )
+	TronProtocol.connect( token )
+});
 
 const playerTokens = {}; // playerMap?
 
