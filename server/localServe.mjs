@@ -5,7 +5,7 @@ const thisPath = pathParts.slice( ( process.platform === "win32" ) ? 1 : 0, path
 
 class LocalProtocol extends Protocol {
 	constructor() {
-		super( { port: 8180, npmPath: thisPath, resourcePath: thisPath + "/ui" } );
+		super( { port: 8180, npmPath: thisPath, resourcePath: thisPath + "/ui", allowModules: [ "three" ] } );
 		this.on( "accept", () => true );
 		console.log( "tron-lightspeed local play  http://localhost:8180/" );
 		console.log( "serving", thisPath + "/ui" );

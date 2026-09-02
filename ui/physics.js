@@ -88,3 +88,78 @@ export function apparentPos( sx, sy, ox, oy, vx, vy ) {
 		y: oy + dist * Math.sin( rayP + Math.PI ),
 	};
 }
+
+/**
+ * 3D native delay. Eq (2.2) with height included. 2D lightDelay() is unchanged.
+ */
+export function lightDelay3( sx, sy, sz, ox, oy, oz ) {
+	return Math.hypot( sx - ox, sy - oy, sz - oz ) / C;
+}
+
+/**
+ * Reception-side 3D aberration of an incoming ray.
+ *
+ * Authoritative steps (homogeneous_light_propagation_framework.md):
+ *   n̂_ray = unit(observer − source)     incoming ray, source → observer
+ *   cosθ  = n̂_ray · v̂                  (B.5)
+ *   â     = (v̂ × n̂_ray) / ‖v̂ × n̂_ray‖ (B.7)  — axis keeps the side that arccos drops
+ *   cosθ' = (cosθ − β) / (1 − β cosθ)  Eq (7.7)
+ *   n̂'    = R(â, θ' − θ) n̂_ray         (B.8) / reception A_R (B.10)
+ *   look  = −n̂'                        apparent direction of the source
+ *
+ * Same geometric distance is kept (no Doppler, no range remix). Trails sit at
+ * rest in the transport structure so emission-side A_E is skipped.
+ *
+ * Coordinates are whatever 3-space the caller uses for both points and velocity.
+ * In the three.js view that is Y-up: board x→x, height→y, board y→z, so the
+ * observer velocity is (viewVx, 0, viewVy).
+ *
+ * Collinear n̂ ∥ v̂: cross product vanishes and Eq 7.7 maps {0,π} to themselves,
+ * so the point is returned unrotated (matches the 2D denom/speed guards).
+ */
+export function apparentPos3( sx, sy, sz, ox, oy, oz, vx, vy, vz ) {
+	const dx = sx - ox;
+	const dy = sy - oy;
+	const dz = sz - oz;
+	const dist = Math.hypot( dx, dy, dz );
+	if( dist < 1e-6 ) return { x: sx, y: sy, z: sz };
+	const speed = Math.hypot( vx, vy, vz );
+	if( speed < 1e-9 ) return { x: sx, y: sy, z: sz };
+	const beta = Math.min( speed / C, 0.999 );
+	const inv = 1 / dist;
+	const nx = -dx * inv;
+	const ny = -dy * inv;
+	const nz = -dz * inv;
+	const iv = 1 / speed;
+	const vxn = vx * iv;
+	const vyn = vy * iv;
+	const vzn = vz * iv;
+	const cos = nx * vxn + ny * vyn + nz * vzn;
+	const denom = 1 - beta * cos;
+	if( Math.abs( denom ) < 1e-12 ) return { x: sx, y: sy, z: sz };
+	const cx = vyn * nz - vzn * ny;
+	const cy = vzn * nx - vxn * nz;
+	const cz = vxn * ny - vyn * nx;
+	const cLen = Math.hypot( cx, cy, cz );
+	if( cLen < 1e-12 ) return { x: sx, y: sy, z: sz };
+	const ax = cx / cLen;
+	const ay = cy / cLen;
+	const az = cz / cLen;
+	const cosP = ( cos - beta ) / denom;
+	const theta = Math.acos( Math.max( -1, Math.min( 1, cos ) ) );
+	const thetaP = Math.acos( Math.max( -1, Math.min( 1, cosP ) ) );
+	const dTheta = thetaP - theta;
+	if( Math.abs( dTheta ) < 1e-12 ) return { x: sx, y: sy, z: sz };
+	const c = Math.cos( dTheta );
+	const s = Math.sin( dTheta );
+	const t = 1 - c;
+	const adot = ax * nx + ay * ny + az * nz;
+	const rx = ay * nz - az * ny;
+	const ry = az * nx - ax * nz;
+	const rz = ax * ny - ay * nx;
+	return {
+		x: ox - ( nx * c + rx * s + ax * adot * t ) * dist,
+		y: oy - ( ny * c + ry * s + ay * adot * t ) * dist,
+		z: oz - ( nz * c + rz * s + az * adot * t ) * dist,
+	};
+}

@@ -4,19 +4,19 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "link": "npm link sack.vfs jsox @d3x0r/socket-service @d3x0r/user-database-remote @d3x0r/srg2 @d3x0r/popups",
+    "link": "npm link sack.vfs jsox @d3x0r/socket-service @d3x0r/user-database-remote @d3x0r/srg2 @d3x0r/popups --ignore-scripts",
     "start": "node --import sack.vfs/import server/tronProtocol.mjs"
   },
-  
   "author": "d3x0r",
   "license": "ISC",
   "dependencies": {
-        "@d3x0r/popups": "latest"
-        , "@d3x0r/socket-service":"latest"
-        , "@d3x0r/srg2":"latest"
-        , "@d3x0r/user-database-remote":"latest"
-        , "sack.vfs":"latest"
-        , "jsox":"latest"
+    "@d3x0r/popups": "latest",
+    "@d3x0r/socket-service": "latest",
+    "@d3x0r/srg2": "latest",
+    "@d3x0r/user-database-remote": "latest",
+    "jsox": "latest",
+    "sack.vfs": "latest",
+    "three": "^0.185.1"
   },
   "description": "Tron Speed of Light Cycles"
 }

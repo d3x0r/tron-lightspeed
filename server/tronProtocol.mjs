@@ -36,7 +36,7 @@ class TronProtocol extends Protocol {
 	wsMap = new WeakMap();
 	players = [];
 	constructor() {
-		super( {port:8180, npmPath:thisPath, resourcePath:thisPath+"/ui", WS:TronClient } );
+		super( {port:8180, npmPath:thisPath, resourcePath:thisPath+"/ui", WS:TronClient, allowModules: [ "three" ] } );
 
 		this.on( "accept", this.accept.bind( this ) )
 		this.on( "connect", this.connect.bind( this ) )
