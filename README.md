@@ -1,12 +1,29 @@
 # Tron Lightspeed Game
 
-Relativistic Tron Lightcycle Game
+Relativistic Tron light-cycle game (STFR / homogeneous light propagation).
 
+First cut: local top-down 2D, 1000x1000 grid, 1 human + 3 bots, light delay + observer-relative aberration. No networked multiplayer yet.
 
-- Connects to https://github.com/d3x0r/user-database - NPM @d3x0r/user-database
+## Run
 
-- Uses https://github.com/d3x0r/user-database-remote - NPM @d3x0r/user-database-remote; this does the connection to the user database.
-- Uses https://github.com/d3x0r/jsox - NPM JSOX - protocol translation - a better JSON
-- Uses https://github.com/d3x0r/srg2 - NPM @d3x0r/srg2 - salty random generator 2, KangarooTwelve JS source; half the size of srg (K12 C transpiled to JS, overhead of short message exchange to WASM made that an impractical target), and twice the speed.
+From this directory, npm start or go.bat, then open http://localhost:8180/
 
+Fallback server: node --import sack.vfs/import server/localServe.mjs
 
+## Controls
+
+- W faster / S slower (hold to ramp). Spawn crawl ~0.2c, cap 2.5c proper. Bots start at 0.55c.
+- A/Left, D/Right: 90 degree turn (no reverse)
+- V: toggle observed (the delay + aberration view) vs god (sim now)
+- R: restart
+- Space: pause
+
+You are cyan. Bots red/orange/magenta. Pillars cycle hue each world-second; far pillars lag.
+
+HUD shows current v_feel / v_real. On crash the cycle stops but the camera keeps the last living beta so the view does not snap; R restarts.
+
+## Physics
+
+Authoritative: homogeneous_light_propagation_framework.md (STFRPhysics). c=200 cells/s. Human starts ~0.2c proper, cap 2.5c. v_real = v_feel c / sqrt(c^2+v_feel^2). Aberration is observer-relative only; no Doppler. See CELL_ENCODING.md.
+
+Local play entry: ui/localGame.js  (old net client still in ui/board.js).

@@ -1,5 +1,5 @@
 
-import {popups} from './popups.js';
+import {popups} from './popups.mjs';
 
 class boardControl extends Popup{
 	canvas = window.game;

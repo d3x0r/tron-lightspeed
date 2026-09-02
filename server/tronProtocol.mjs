@@ -2,12 +2,17 @@ export const config = (await import( "file://"+process.cwd()+  "/config.jsox" ))
 
 import {WS, Protocol} from "sack.vfs/server-protocol"
 const pathParts = new URL( import.meta.url ).pathname.split('/');
-// win32 starts with //blah and we want to drop the first extra slash
 const thisPath = pathParts.slice( (process.platform==="win32")?1:0, pathParts.length-2 ).join('/');
-//console.log( pathParts, thisPath );
 
-// not sure how this hooks together yet
-import {getUser, enableLogin} from "@d3x0r/user-database-remote/enableLogin.mjs";
+let getUser = (_key) => null;
+let enableLogin = null;
+try {
+	const loginMod = await import("@d3x0r/user-database-remote/enableLogin.mjs");
+	getUser = loginMod.getUser;
+	enableLogin = loginMod.enableLogin;
+} catch (e) {
+	console.log("user-database-remote not available; local play only:", e.message);
+}
 
 const clientBoards = new Map();
 
@@ -16,7 +21,7 @@ class TronClient extends WS {
 	tsDelta = 0;
 	timeDelta = 0;
 	user = null;
-	players = []; // all other players related to this player...
+	players = [];
 	constructor( ws ) {
 		super( ws );
 	}
@@ -48,30 +53,27 @@ class TronProtocol extends Protocol {
 		this.on( "join", (client,msg)=>{
 			clientBoards.set( msg.join.uid, client )
 			client.players.push( client );
-			// echo join(mostly)
 			client.send( {op:"join", join:msg.join} );
 		} );
 		this.on( "key", (client,msg)=>{
-			client.user = getUser( msg.key.svc.key[0] );
+			client.user = getUser( msg.key && msg.key.svc && msg.key.svc.key ? msg.key.svc.key[0] : null );
 			console.log( "Is client client?", msg.key, client );
 			client.send( {op:"user", user:client.user } );
-			// allow this user to play... they asked nicely afterall...
-			//client.key = msg.key
 		} );
 
 		const app = this.server.app
-		// optional expect handler, otherwise use getUser on the key....
-		enableLogin( this.server, app );
-
+		if( enableLogin ) {
+			try { enableLogin( this.server, app ); }
+			catch (e) { console.log("enableLogin skipped:", e.message); }
+		}
+		console.log("tron-lightspeed  http://localhost:8180/");
 	}
 
 	tick( connection, message ) {
-		//console.log( "Tick", message );
 		connection.send( {op:"tick", now:Date.now(), pnow:performance.now(), prnow:message.now, prpnow:message.pnow } );
 		return true;
 	}
 	tock( connection, message ) {
-		//console.log( "Tock", client, connection, message );
 		connection.delta = Date.now() - message.prnow;
 		connection.tsDelta = performance.now() - message.prpnow;
 		connection.timeDelta = ( message.prpnow + connection.tsDelta/2 ) - message.pnow;
@@ -85,38 +87,34 @@ class TronProtocol extends Protocol {
 	connect( connection, ws ) {
 		this.wsMap.set( connection, ws );
 		this.players.push( connection );
-		//console.log( "Connected to", connection, ws );
-		//ws.on( "message", this.message.bind( this, connection ) );
 	}
 
 	accelerate( client, msg ) {
 		msg.timeStamp += client.timeDelta;
 		msg.user = client.user;
 		const msg_ = JSOX.stringify( msg );
-		this.player.forEach( p=>p.send( msg_ ) );
+		this.players.forEach( p=>p.send( msg_ ) );
 	}
 	decelerate( client, msg ) {
 		msg.timeStamp += client.timeDelta;
 		msg.user = client.user;
 		const msg_ = JSOX.stringify( msg );
-		this.player.forEach( p=>p.send( msg_ ) );
+		this.players.forEach( p=>p.send( msg_ ) );
 	}
 	turn( client, msg ) {
 		msg.timeStamp += client.timeDelta;
 		msg.user = client.user;
 		const msg_ = JSOX.stringify( msg );
-		this.player.forEach( p=>p.send( msg_ ) );
+		this.players.forEach( p=>p.send( msg_ ) );
 	}
 	cruise( client, msg ) {
 		msg.timeStamp += client.timeDelta;
 		msg.user = client.user;
 		const msg_ = JSOX.stringify( msg );
-		this.player.forEach( p=>p.send( msg_ ) );
+		this.players.forEach( p=>p.send( msg_ ) );
 	}
 
-
 	message( connection, message ) {
-		
 		console.log( "Message from", connection, message );
 	}
 
